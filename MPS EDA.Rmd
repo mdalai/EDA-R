@@ -1,0 +1,155 @@
+---
+output: pdf_document
+---
+Milwaukee Public School Dropout Rate - Exponential Data Analysis by Narendalai Mingat
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(dplyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd('C:/Users/minga/Downloads/WI-PS data')
+
+##--- solving data 2005-2014 ---------
+df.MPS1 <- read.csv("MPS_data_2000_2004.csv")
+# solve data with special value like NA, * 
+df.MPS1 <- subset(df.MPS1, drop_out_rate != '*')
+#str(df.MPS1)
+# transform data type
+df.MPS1$drop_out_rate <- as.numeric(as.character(df.MPS1$drop_out_rate))
+df.MPS1$drop_outs <- as.numeric(as.character(df.MPS1$drop_outs))
+# select the useful columns
+df.MPS1 <- data.frame(df.MPS1$year,df.MPS1$district_name,df.MPS1$school_name,df.MPS1$school_type,
+           df.MPS1$enrollment,df.MPS1$drop_outs,df.MPS1$drop_out_rate)
+# rename column names
+names(df.MPS1) <- c("SCHOOL_YEAR","DISTRICT_NAME","SCHOOL_NAME","GRADE_GROUP",
+                   "STUDENT_COUNT","DROPOUT_COUNT","DROPOUT_RATE")
+
+##--- solving data 2005-2014 ---------
+df.MPS2 <- read.csv("MPS_data_2005_2014.csv")
+# str(df.MPS)
+# solve data with special value like NA, * 
+df.MPS2 <- subset(df.MPS2, DROPOUT_RATE != '*')
+# transform data type
+df.MPS2$DROPOUT_RATE <- as.numeric(as.character(df.MPS2$DROPOUT_RATE))
+df.MPS2$DROPOUT_COUNT <- as.numeric(as.character(df.MPS2$DROPOUT_COUNT))
+df.MPS2$STUDENT_COUNT <- as.numeric(as.character(df.MPS2$STUDENT_COUNT))
+df.MPS2$COMPLETED_TERM_COUNT <- as.numeric(as.character(df.MPS2$COMPLETED_TERM_COUNT))
+# select the useful columns
+df.MPS2 <- data.frame(df.MPS2$SCHOOL_YEAR,df.MPS2$DISTRICT_NAME,df.MPS2$SCHOOL_NAME,df.MPS2$GRADE_GROUP,
+           df.MPS2$STUDENT_COUNT,df.MPS2$DROPOUT_COUNT,df.MPS2$DROPOUT_RATE)
+
+# rename column names
+names(df.MPS2) <- c("SCHOOL_YEAR","DISTRICT_NAME","SCHOOL_NAME","GRADE_GROUP",
+                   "STUDENT_COUNT","DROPOUT_COUNT","DROPOUT_RATE")
+
+## -- putting 2 group data together ---------------
+df.MPS <- df.MPS1
+df.MPS <- rbind(df.MPS,df.MPS2)
+
+
+# replacing Grade data 
+#table(df.MPS$GRADE_GROUP)
+df.MPS$GRADE_GROUP[df.MPS$GRADE_GROUP=="Elem"] <- "Elementary School"
+df.MPS$GRADE_GROUP[df.MPS$GRADE_GROUP=="High"] <- "High School"
+df.MPS$GRADE_GROUP[df.MPS$GRADE_GROUP=="El/Sec"] <- "Combined Elementary/Secondary School"
+df.MPS$GRADE_GROUP[df.MPS$GRADE_GROUP=="Mid/Jr Hi"] <- "Middle School"
+
+```
+
+# Data structure understanding
+### 1. Basic Data structure
+```{r echo=FALSE}
+dim(df.MPS)
+names(df.MPS)
+str(df.MPS)
+#summary(df.MPS)
+```
+
+### 2. General Understanding
+```{r echo=FALSE}
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1)
+
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1) + 
+  scale_x_continuous(breaks = 50:150,limits = c(49,151))
+```
+
+Most dropout are in range of less than 25%. Dropout rate is higher than 50% is not normal, especially for those data that are 100%.
+```{r echo=FALSE}
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1) + facet_wrap(~SCHOOL_YEAR,ncol=3)
+# Faceting yearly
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1) + 
+  scale_x_continuous(limits = c(49,151)) + facet_wrap(~SCHOOL_YEAR,ncol=3)
+```
+
+Year 2012-13,2014-15 has no dropout rate higher than 50%. 
+Year 2005-06,2006-07,2007-08,2008-09 have higher dropout rate.
+
+### Need to further check following high rate data: DROPOUT Rate > 50%. See detail in "MPS_Dropout_highrate.csv" 
+```{r echo=FALSE}
+subset(df.MPS, DROPOUT_RATE > 50 & DROPOUT_RATE <= 100)
+subset(df.MPS, DROPOUT_RATE > 100)
+```
+Above 3 data are even greater than 100%. Need to check.
+
+### 3. Further understanding of data
+**See data by the Grade**
+```{r echo=FALSE}
+# by Grade Group 
+table(df.MPS$GRADE_GROUP)
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1) + facet_wrap(~GRADE_GROUP,ncol=2)
+by(df.MPS$DROPOUT_RATE,df.MPS$GRADE_GROUP,summary)
+
+# barplot
+ggplot(data = df.MPS, aes(x=GRADE_GROUP)) + geom_bar(stat = "count")
+ggplot(df.MPS, aes(x=GRADE_GROUP, y=DROPOUT_RATE)) + stat_summary(fun.y = mean, geom = "bar")
+```
+
+**See data by District**
+```{r echo=FALSE}
+# by District 
+table(df.MPS$DISTRICT_NAME)
+ggplot(data = df.MPS, aes(x=DROPOUT_RATE)) + geom_histogram(binwidth=1) + facet_wrap(~DISTRICT_NAME,ncol=4)
+by(df.MPS$DROPOUT_RATE,df.MPS$DISTRICT_NAME,summary)
+
+# barplot
+ggplot(df.MPS, aes(x=DISTRICT_NAME, y=DROPOUT_RATE)) + stat_summary(fun.y = mean, geom = "bar") +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+
+ggplot(df.MPS, aes(x=DISTRICT_NAME, y=DROPOUT_RATE, fill=GRADE_GROUP), color=GRADE_GROUP) + 
+  stat_summary(fun.y = mean, geom = "bar", position = "stack") + theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+### 4. Final data
+*if everything is right, we can get our final data. It is better to use mean data.*
+```{r echo=FALSE}
+df.final <- summarise(group_by(df.MPS, SCHOOL_YEAR), count= n(),
+          total_student=sum(STUDENT_COUNT),
+          dropout=sum(DROPOUT_COUNT),
+          Median = median(DROPOUT_RATE),
+          Mean_DROPOUT_RATE = mean(DROPOUT_RATE))
+
+df.final$year <- c(2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014)
+df.final
+
+ggplot(aes(x=year, y=Mean_DROPOUT_RATE),data=df.final) + geom_point() + geom_line()
+```
+
+```{r echo=FALSE}
+# save Final data into excel
+#write.csv(df.final,'MPS_Dropout.csv',row.names=FALSE)
+
+# save data its DROPOUT RATE is higher 50%
+#write.csv(subset(df.MPS, DROPOUT_RATE > 50),'MPS_Dropout_highrate.csv',row.names=FALSE)
+```
+
